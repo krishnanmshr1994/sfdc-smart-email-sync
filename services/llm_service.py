@@ -24,7 +24,7 @@ class LLMService:
             "You are an AI assistant that analyzes emails and maintains a running summary in JSON format.\n"
             "You must respond ONLY with a valid JSON object, containing EXACTLY the following two keys:\n"
             "  - 'summary': (string) An updated, highly detailed running summary of the ENTIRE conversation thread. You MUST retain ALL key points, dates, decisions, and issues from the existing summary. Do NOT drop any historical details. Integrate the existing summary with the new email content to produce a single cohesive and comprehensive summary.\n"
-            "  - 'overall_sentiment': (string) The overall sentiment of the entire meeting thread. "
+            "  - 'overall_sentiment': (string) The CURRENT sentiment or status of the project based on the latest email. Weight the most recent email heavily. If a previous crisis has been stabilized or mitigated by the latest email, mark the sentiment as 'Neutral'. "
             "Must be exactly one of: 'Positive', 'Neutral', or 'Negative'.\n"
         )
         
@@ -32,7 +32,7 @@ class LLMService:
         
         if previous_summary:
             user_prompt += f"EXISTING RUNNING SUMMARY of the thread so far:\n{previous_summary}\n\n"
-            user_prompt += "Please integrate the existing running summary with the current email. CRITICAL: You must preserve all key points and factual details from the EXISTING RUNNING SUMMARY. Do not summarize away important historical context. Generate an updated 'summary' and evaluate the 'overall_sentiment'.\n"
+            user_prompt += "Please integrate the existing running summary with the current email. CRITICAL: You must preserve all key points and factual details from the EXISTING RUNNING SUMMARY. Do not summarize away important historical context. Generate an updated 'summary' and evaluate the 'overall_sentiment' based heavily on the trajectory of this latest email.\n"
 
         response = self.client.chat.completions.create(
             model=self.model,
