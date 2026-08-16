@@ -15,24 +15,24 @@ class LLMService:
         )
         self.model = "meta/llama-3.3-70b-instruct"
 
-    def analyze_email(self, email_text: str, previous_insights: Optional[str] = None) -> Dict[str, Any]:
+    def analyze_email(self, email_text: str, previous_summary: Optional[str] = None) -> Dict[str, Any]:
         """
         Analyzes the email content to extract meeting link, summarize content,
         and provide sentiment analysis.
         """
         system_prompt = (
-            "You are an AI assistant that analyzes emails and extracts key information in JSON format.\n"
+            "You are an AI assistant that analyzes emails and maintains a running summary in JSON format.\n"
             "You must respond ONLY with a valid JSON object, containing EXACTLY the following two keys:\n"
-            "  - 'summary': (string) A concise summary of the CURRENT email content.\n"
+            "  - 'summary': (string) An updated, highly detailed running summary of the ENTIRE conversation thread. You MUST retain ALL key points, dates, decisions, and issues from the existing summary. Do NOT drop any historical details. Integrate the existing summary with the new email content to produce a single cohesive and comprehensive summary.\n"
             "  - 'overall_sentiment': (string) The overall sentiment of the entire meeting thread. "
             "Must be exactly one of: 'Positive', 'Neutral', or 'Negative'.\n"
         )
         
         user_prompt = f"Analyze the following CURRENT email content:\n\n{email_text}\n\n"
         
-        if previous_insights:
-            user_prompt += f"Context from PREVIOUS meeting records:\n{previous_insights}\n\n"
-            user_prompt += "Please incorporate the previous insights to evaluate the 'overall_sentiment' of the entire thread.\n"
+        if previous_summary:
+            user_prompt += f"EXISTING RUNNING SUMMARY of the thread so far:\n{previous_summary}\n\n"
+            user_prompt += "Please integrate the existing running summary with the current email. CRITICAL: You must preserve all key points and factual details from the EXISTING RUNNING SUMMARY. Do not summarize away important historical context. Generate an updated 'summary' and evaluate the 'overall_sentiment'.\n"
 
         response = self.client.chat.completions.create(
             model=self.model,

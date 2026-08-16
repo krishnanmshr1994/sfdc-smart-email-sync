@@ -33,19 +33,22 @@ def process_email_background(email_content: str, subject: str, combined_text: st
         # 1. Regex -> Extract Salesforce Meeting ID
         meeting_id = extract_sf_meeting_id(combined_text)
         logger.debug(f"Regex Extracted Meeting ID: {meeting_id}")
-        previous_insights = None
+        previous_summary = None
         
         # 2. Use ID to fetch Previous SF Data
         if meeting_id:
             logger.debug(f"Found potential Salesforce ID: {meeting_id}")
-            insights = sf_service.get_meeting_insights(meeting_id)
-            logger.debug(f"Fetched notes from Salesforce: {insights}")
-            if "Salesforce connection not established" not in insights and "No previous meeting notes found" not in insights and "Error" not in insights:
-                previous_insights = insights
-            elif "No previous meeting notes found" in insights:
-                logger.info("Meeting ID found, but no previous notes exist.")
+            summary_text = sf_service.get_meeting_summary(meeting_id)
+            logger.debug(f"Fetched summary from Salesforce: {summary_text}")
+            if summary_text and "Salesforce connection not established" not in summary_text and "No previous meeting found" not in summary_text and "Error" not in summary_text:
+                previous_summary = summary_text
+            elif "No previous meeting found" in summary_text if summary_text else False:
+                logger.info("Meeting ID found, but no previous meeting record exists.")
             else:
-                meeting_id = None
+                if not summary_text:
+                    logger.info("Meeting exists but has no summary yet.")
+                else:
+                    meeting_id = None
 
         # 3. Regex -> Extract Meeting Link
         meeting_link = extract_meeting_link(combined_text)
@@ -53,7 +56,7 @@ def process_email_background(email_content: str, subject: str, combined_text: st
 
         # 4. Call LLM for Summary and Overall Sentiment
         logger.info("Analyzing email with LLM...")
-        llm_analysis = llm_service.analyze_email(email_content, previous_insights)
+        llm_analysis = llm_service.analyze_email(email_content, previous_summary)
         logger.debug(f"Raw LLM Response dictionary: {llm_analysis}")
         summary = llm_analysis.get('summary', 'No summary generated.')
         sentiment = llm_analysis.get('overall_sentiment', 'Neutral')

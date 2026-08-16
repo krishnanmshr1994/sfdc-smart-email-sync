@@ -65,38 +65,26 @@ class SalesforceService:
     def is_connected(self) -> bool:
         return self.sf is not None
 
-    def get_meeting_insights(self, meeting_id: str) -> str:
+    def get_meeting_summary(self, meeting_id: str) -> Optional[str]:
         """
-        Queries previous Meeting_Notes__c for the given Meeting__c Id
-        and formats them into a single insights string for the LLM context.
+        Queries the existing Summary__c field for the given Meeting__c Id.
+        Returns the existing summary string if available, or None.
         """
         if not self.is_connected():
             return "Salesforce connection not established."
 
-        query = f"""
-            SELECT Id, Notes__c, CreatedDate 
-            FROM Meeting_Notes__c 
-            WHERE Meeting__c = '{meeting_id}'
-            ORDER BY CreatedDate DESC
-            LIMIT 5
-        """
+        query = f"SELECT Summary__c FROM Meeting__c WHERE Id = '{meeting_id}'"
         try:
             result = self.sf.query(query)
             records = result.get('records', [])
             
             if not records:
-                return "No previous meeting notes found."
+                return "No previous meeting found."
                 
-            insights = []
-            for record in records:
-                date_str = record.get('CreatedDate', '')[:10]
-                notes = record.get('Notes__c', 'No notes')
-                insights.append(f"[{date_str}] Raw Notes:\n{notes}\n")
-                
-            return "\n".join(insights)
+            return records[0].get('Summary__c')
         except Exception as e:
-            logger.error(f"Error querying Salesforce: {e}")
-            return f"Error retrieving insights: {e}"
+            logger.error(f"Error querying Salesforce for Meeting__c: {e}")
+            return f"Error retrieving summary: {e}"
 
     def create_meeting(self, subject: str, summary: str, sentiment: str, meeting_link: Optional[str]) -> Optional[str]:
         """
