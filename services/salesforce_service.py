@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 import os
 import requests
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
@@ -22,7 +24,7 @@ class SalesforceService:
         
         try:
             if client_id and client_secret:
-                print("Using OAuth 2.0 Client Credentials Flow for Salesforce.")
+                logger.info("Using OAuth 2.0 Client Credentials Flow for Salesforce.")
                 
                 # If a custom instance URL is provided, use it. Otherwise, fallback to the generic domain.
                 base_url = instance_url.rstrip('/') if instance_url else f"https://{domain}.salesforce.com"
@@ -36,7 +38,7 @@ class SalesforceService:
                 response = requests.post(auth_url, data=payload)
                 
                 if response.status_code != 200:
-                    print(f"Salesforce OAuth Error: {response.text}")
+                    logger.info(f"Salesforce OAuth Error: {response.text}")
                     response.raise_for_status()
                 
                 auth_data = response.json()
@@ -45,10 +47,10 @@ class SalesforceService:
                     instance_url=auth_data['instance_url']
                 )
             elif session_id and instance_url:
-                print("Using Session ID authentication for Salesforce.")
+                logger.info("Using Session ID authentication for Salesforce.")
                 self.sf = Salesforce(session_id=session_id, instance_url=instance_url)
             elif username and password:
-                print("Using Username/Password authentication for Salesforce.")
+                logger.info("Using Username/Password authentication for Salesforce.")
                 self.sf = Salesforce(
                     username=username, 
                     password=password, 
@@ -56,9 +58,9 @@ class SalesforceService:
                     domain=domain
                 )
             else:
-                print("Warning: Salesforce credentials missing from environment variables.")
+                logger.info("Warning: Salesforce credentials missing from environment variables.")
         except Exception as e:
-            print(f"Failed to connect to Salesforce: {e}")
+            logger.error(f"Failed to connect to Salesforce: {e}")
 
     def is_connected(self) -> bool:
         return self.sf is not None
@@ -93,7 +95,7 @@ class SalesforceService:
                 
             return "\n".join(insights)
         except Exception as e:
-            print(f"Error querying Salesforce: {e}")
+            logger.error(f"Error querying Salesforce: {e}")
             return f"Error retrieving insights: {e}"
 
     def create_meeting(self, subject: str, summary: str, sentiment: str, meeting_link: Optional[str]) -> Optional[str]:
@@ -116,7 +118,7 @@ class SalesforceService:
             result = self.sf.Meeting__c.create(data)
             return result.get('id')
         except Exception as e:
-            print(f"Error creating Meeting__c: {e}")
+            logger.error(f"Error creating Meeting__c: {e}")
             return None
             
     def update_meeting(self, meeting_id: str, summary: str, sentiment: str) -> bool:
@@ -133,7 +135,7 @@ class SalesforceService:
             })
             return True
         except Exception as e:
-            print(f"Error updating Meeting__c sentiment: {e}")
+            logger.error(f"Error updating Meeting__c sentiment: {e}")
             return False
 
     def create_meeting_notes(self, meeting_id: str, raw_body: str) -> bool:
@@ -152,5 +154,6 @@ class SalesforceService:
             self.sf.Meeting_Notes__c.create(data)
             return True
         except Exception as e:
-            print(f"Error creating Meeting_Notes__c: {e}")
+            logger.error(f"Error creating Meeting_Notes__c: {e}")
             return False
+
