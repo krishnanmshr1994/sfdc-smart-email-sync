@@ -55,20 +55,23 @@ async def receive_email(payload: CloudMailinPayload):
         print(f"LLM Analysis complete. \nSentiment: {sentiment}\nSummary: {summary}")
 
         # 5. Push to Salesforce
+        # 5. Push to Salesforce
         if sf_service.is_connected():
             if not meeting_id:
                 # Create new meeting since we couldn't find one
                 print("No valid Meeting ID found. Creating new Meeting__c record...")
-                meeting_id = sf_service.create_meeting(subject, sentiment)
+                meeting_id = sf_service.create_meeting(subject, summary, sentiment, meeting_link)
                 print(f"Created Meeting__c with ID: {meeting_id}")
             else:
-                # Update existing meeting with the new overall sentiment
-                print(f"Updating Meeting__c ({meeting_id}) overall sentiment to: {sentiment}")
-                sf_service.update_meeting_sentiment(meeting_id, sentiment)
+                # Update existing meeting with the new overall summary and sentiment
+                print(f"Updating Meeting__c ({meeting_id}) summary and sentiment...")
+                sf_service.update_meeting(meeting_id, summary, sentiment)
 
             if meeting_id:
                 print(f"Creating Meeting_Notes__c for Meeting {meeting_id}...")
-                success = sf_service.create_meeting_notes(meeting_id, summary, meeting_link)
+                # Use HTML if available to preserve rich text formatting, fallback to plain
+                raw_body = payload.html if payload.html else email_content
+                success = sf_service.create_meeting_notes(meeting_id, raw_body)
                 if success:
                     print("Successfully created Meeting Notes.")
                 else:

@@ -72,7 +72,7 @@ class SalesforceService:
             return "Salesforce connection not established."
 
         query = f"""
-            SELECT Id, Summary__c, CreatedDate 
+            SELECT Id, Notes__c, CreatedDate 
             FROM Meeting_Notes__c 
             WHERE Meeting__c = '{meeting_id}'
             ORDER BY CreatedDate DESC
@@ -88,40 +88,47 @@ class SalesforceService:
             insights = []
             for record in records:
                 date_str = record.get('CreatedDate', '')[:10]
-                summary = record.get('Summary__c', 'No summary')
-                insights.append(f"[{date_str}] Notes: {summary}")
+                notes = record.get('Notes__c', 'No notes')
+                insights.append(f"[{date_str}] Raw Notes:\n{notes}\n")
                 
             return "\n".join(insights)
         except Exception as e:
             print(f"Error querying Salesforce: {e}")
             return f"Error retrieving insights: {e}"
 
-    def create_meeting(self, subject: str, sentiment: str) -> Optional[str]:
+    def create_meeting(self, subject: str, summary: str, sentiment: str, meeting_link: Optional[str]) -> Optional[str]:
         """
-        Creates a new Meeting__c record with an initial Sentiment.
+        Creates a new Meeting__c record.
         """
         if not self.is_connected():
             return None
 
         try:
-            result = self.sf.Meeting__c.create({
+            data = {
                 'Name': subject[:80],
+                'Subject__c': subject,
+                'Summary__c': summary,
                 'Sentiment__c': sentiment
-            })
+            }
+            if meeting_link:
+                data['Meeting_Link__c'] = meeting_link
+                
+            result = self.sf.Meeting__c.create(data)
             return result.get('id')
         except Exception as e:
             print(f"Error creating Meeting__c: {e}")
             return None
             
-    def update_meeting_sentiment(self, meeting_id: str, sentiment: str) -> bool:
+    def update_meeting(self, meeting_id: str, summary: str, sentiment: str) -> bool:
         """
-        Updates the overall Sentiment__c picklist on the parent Meeting__c.
+        Updates the Summary__c and Sentiment__c on the parent Meeting__c.
         """
         if not self.is_connected():
             return False
             
         try:
             self.sf.Meeting__c.update(meeting_id, {
+                'Summary__c': summary,
                 'Sentiment__c': sentiment
             })
             return True
@@ -129,7 +136,7 @@ class SalesforceService:
             print(f"Error updating Meeting__c sentiment: {e}")
             return False
 
-    def create_meeting_notes(self, meeting_id: str, summary: str, meeting_link: Optional[str]) -> bool:
+    def create_meeting_notes(self, meeting_id: str, raw_body: str) -> bool:
         """
         Creates a new child Meeting_Notes__c record attached to the Meeting__c.
         """
@@ -139,10 +146,8 @@ class SalesforceService:
         try:
             data = {
                 'Meeting__c': meeting_id,
-                'Summary__c': summary,
+                'Notes__c': raw_body,
             }
-            if meeting_link:
-                data['Meeting_Link__c'] = meeting_link
 
             self.sf.Meeting_Notes__c.create(data)
             return True
